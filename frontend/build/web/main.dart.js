@@ -27092,8 +27092,8 @@ aUq(a){return Math.sqrt(a)},
 aTs(a){return Math.exp(a)},
 aFY(a){return Math.log(a)},
 HX(a,b){return Math.pow(a,b)},
-aJw(){A.au()
-return"http://localhost:5000/api"},
+aJw(){var s="https://bookwise-api-9bsx.onrender.com/api"
+return s},
 Zy(){var s=0,r=A.P(t.ob),q,p
 var $async$Zy=A.Q(function(a,b){if(a===1)return A.M(b,r)
 for(;;)switch(s){case 0:p=A

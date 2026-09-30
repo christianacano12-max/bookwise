@@ -13,6 +13,7 @@ class AppConfig {
     if (defaultTargetPlatform == TargetPlatform.android && !kIsWeb) {
       return 'http://10.0.2.2:5000/api';
     }
-    return 'http://localhost:5000/api';
+    return 'https://bookwise-api-9bsx.onrender.com/api';
   }
 }
+
