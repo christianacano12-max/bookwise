@@ -9,6 +9,24 @@ A full-stack Book Recommendation System designed to satisfy the supplied Final P
 - Authentication: JWT + bcrypt
 - API communication: REST/JSON
 
+## Languages and why they are used
+
+- **Dart** powers the Flutter frontend. It builds the screens, handles user
+  interactions, and calls the backend API. Flutter and Dart let the same
+  application run on supported platforms such as Windows, Android, iOS, and
+  web.
+- **JavaScript** powers the Node.js backend. Express uses it to provide the
+  REST API, validate requests, authenticate users, and coordinate database and
+  recommendation operations.
+- **SQL** defines and queries the PostgreSQL data. It stores and retrieves
+  users, books, favorites, reservations, and borrowing history.
+- **XML** is not used for application logic; it is a markup/configuration
+  format. The Windows runner's
+  [application manifest](frontend/windows/runner/runner.exe.manifest) uses XML
+  to tell Windows about compatibility and display settings such as per-monitor
+  DPI awareness. This helps the desktop app behave correctly on Windows
+  displays.
+
 ## DSA used
 1. **Queue** — book reservation queue.
 2. **Stack** — borrowing/interaction history.
@@ -37,16 +55,32 @@ A full-stack Book Recommendation System designed to satisfy the supplied Final P
 ## Folder structure
 ```
 book_recommendation_system/
+├── docs/                      # Setup, project, and algorithm documentation
+│   ├── DOCUMENTATION_INDEX.md  # Documentation guide
+│   ├── DSA_FINAL_PROJECT_DOCUMENTATION.md
+│   ├── DSA_IMPLEMENTATION_DETAILS.md
+│   ├── MULTI_DEVICE_SETUP.md
+│   ├── PSEUDOCODE_REFERENCE.md
+│   └── ...
 ├── backend/
 │   ├── src/
+│   │   ├── server.js          # API routes and middleware
+│   │   ├── auth.js            # JWT authentication
+│   │   ├── db.js              # PostgreSQL connection
+│   │   └── dsa.js             # Data structures and algorithms
 │   ├── schema.sql
 │   ├── seed.sql
 │   ├── .env.example
 │   └── package.json
 └── frontend/
     ├── lib/
+    │   ├── pages/             # Application screens
+    │   ├── services/          # API client
+    │   ├── widgets/           # Shared UI components
+    │   ├── config.dart        # API URL configuration
+    │   └── main.dart          # App entry point and routes
     ├── pubspec.yaml
-    └── .env.example
+    └── test/
 ```
 
 ## 1. PostgreSQL setup
@@ -144,6 +178,7 @@ The project directly satisfies the supplied DSA final-project rubric:
 - **Persistence:** PostgreSQL stores users, books, favorites, reservations,
   borrow history, and community recommendations.
 
-See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) for the full rubric
-mapping and [PRESENTATION_OUTLINE.md](PRESENTATION_OUTLINE.md) for the final
-demonstration and presentation structure.
+See [the documentation index](docs/DOCUMENTATION_INDEX.md) for the project
+guides, [project documentation](docs/PROJECT_DOCUMENTATION.md) for the full
+rubric mapping, and [the presentation outline](docs/PRESENTATION_OUTLINE.md)
+for the final demonstration structure.

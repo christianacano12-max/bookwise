@@ -1,6 +1,3 @@
-// Data Structures and Algorithms used by the application.
-
-// 1. Queue — FIFO reservation processing.
 export class ReservationQueue {
   constructor(items = []) { this.items = [...items]; }
   enqueue(item) { this.items.push(item); }
@@ -9,7 +6,6 @@ export class ReservationQueue {
   get length() { return this.items.length; }
 }
 
-// 2. Stack — LIFO interaction/borrowing history.
 export class HistoryStack {
   constructor(items = []) { this.items = [...items]; }
   push(item) { this.items.push(item); }
@@ -18,10 +14,10 @@ export class HistoryStack {
   values() { return [...this.items].reverse(); }
 }
 
-// 3. Binary Search Tree — title searching.
 class Node {
   constructor(book) { this.book = book; this.left = null; this.right = null; }
 }
+
 export class BookBST {
   constructor() { this.root = null; }
 
@@ -54,7 +50,6 @@ export class BookBST {
   }
 }
 
-// 4. Merge Sort — O(n log n) sorting.
 export function mergeSort(array, compare) {
   if (array.length <= 1) return array;
   const mid = Math.floor(array.length / 2);
@@ -69,7 +64,6 @@ export function mergeSort(array, compare) {
   return result.concat(left.slice(i), right.slice(j));
 }
 
-// 5. Hash Map — fast key lookup / genre frequency.
 export function genreFrequency(books) {
   const map = new Map();
   for (const book of books) map.set(book.genre, (map.get(book.genre) || 0) + 1);

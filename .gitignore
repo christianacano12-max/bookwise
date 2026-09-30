@@ -25,3 +25,13 @@ frontend/.packages
 *.iml
 .DS_Store
 Thumbs.db
+
+node_modules/
+.env
+.env.*
+!.env.example
+build/
+.dart_tool/
+.idea/
+.vscode/
+*.log

@@ -51,9 +51,9 @@ app.post('/api/auth/signup', async (req, res) => {
     );
     res.status(201).json({ token: signToken(r.rows[0]), user: r.rows[0] });
   } catch (e) {
-    if (e.code === '23505') return res.status(409).json({ message: 'Email is already registered.' });
-    res.status(500).json({ message: 'Unable to create account.' });
-  }
+  console.error('SIGNUP ERROR:', e);
+  return res.status(500).json({ message: 'Unable to create account.' });
+}
 });
 
 app.post('/api/auth/login', async (req, res) => {
