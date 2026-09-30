@@ -1,15 +1,9 @@
-import fs from "fs";
-import path from "path";
 import pg from "pg";
 import dotenv from "dotenv";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const { Client } = pg;
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
@@ -18,10 +12,25 @@ const client = new Client({
     : false,
 });
 
+async function columnExists(table, column) {
+  const result = await client.query(
+    `
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = $1
+      AND column_name = $2
+    `,
+    [table, column]
+  );
+
+  return result.rowCount > 0;
+}
+
 async function main() {
   await client.connect();
 
-  // Users
+  // USERS
   await client.query(`
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
@@ -32,7 +41,7 @@ async function main() {
     );
   `);
 
-  // Books
+  // BOOKS
   await client.query(`
     CREATE TABLE IF NOT EXISTS books (
       id SERIAL PRIMARY KEY,
@@ -41,23 +50,52 @@ async function main() {
       genre VARCHAR(100) NOT NULL,
       description TEXT DEFAULT '',
       published_year INT DEFAULT 2024,
-      rating NUMERIC(3,2) DEFAULT 0 CHECK (rating >= 0 AND rating <= 5),
-      available_copies INT DEFAULT 1 CHECK (available_copies >= 0),
+      rating NUMERIC(3,2) DEFAULT 0,
+      available_copies INT DEFAULT 1,
       cover_url TEXT DEFAULT '',
-      submitted_by INT REFERENCES users(id) ON DELETE SET NULL,
+      submitted_by INT,
       is_community_recommendation BOOLEAN NOT NULL DEFAULT FALSE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
-  // Add missing book columns if an older table already exists
-  await client.query(`
-    ALTER TABLE books
-      ADD COLUMN IF NOT EXISTS available_copies INT DEFAULT 1,
-      ADD COLUMN IF NOT EXISTS cover_url TEXT DEFAULT '',
-      ADD COLUMN IF NOT EXISTS submitted_by INT REFERENCES users(id) ON DELETE SET NULL,
-      ADD COLUMN IF NOT EXISTS is_community_recommendation BOOLEAN NOT NULL DEFAULT FALSE;
-  `);
+  // Add missing columns individually
+  const bookColumns = [
+    [
+      "description",
+      `ALTER TABLE books ADD COLUMN description TEXT DEFAULT ''`
+    ],
+    [
+      "published_year",
+      `ALTER TABLE books ADD COLUMN published_year INT DEFAULT 2024`
+    ],
+    [
+      "rating",
+      `ALTER TABLE books ADD COLUMN rating NUMERIC(3,2) DEFAULT 0`
+    ],
+    [
+      "available_copies",
+      `ALTER TABLE books ADD COLUMN available_copies INT DEFAULT 1`
+    ],
+    [
+      "cover_url",
+      `ALTER TABLE books ADD COLUMN cover_url TEXT DEFAULT ''`
+    ],
+    [
+      "submitted_by",
+      `ALTER TABLE books ADD COLUMN submitted_by INT`
+    ],
+    [
+      "is_community_recommendation",
+      `ALTER TABLE books ADD COLUMN is_community_recommendation BOOLEAN NOT NULL DEFAULT FALSE`
+    ],
+  ];
+
+  for (const [column, sql] of bookColumns) {
+    if (!(await columnExists("books", column))) {
+      await client.query(sql);
+    }
+  }
 
   // Favorites
   await client.query(`
@@ -69,7 +107,7 @@ async function main() {
     );
   `);
 
-  // Reservations / Queue
+  // Reservations
   await client.query(`
     CREATE TABLE IF NOT EXISTS reservations (
       id SERIAL PRIMARY KEY,
@@ -81,7 +119,7 @@ async function main() {
     );
   `);
 
-  // Borrowing history / Stack
+  // Borrow history
   await client.query(`
     CREATE TABLE IF NOT EXISTS borrow_history (
       id SERIAL PRIMARY KEY,
@@ -92,18 +130,32 @@ async function main() {
     );
   `);
 
-  // Indexes
+  // Connect submitted_by to users when possible
   await client.query(`
-    CREATE INDEX IF NOT EXISTS idx_books_title ON books(title);
-    CREATE INDEX IF NOT EXISTS idx_books_genre ON books(genre);
-    CREATE INDEX IF NOT EXISTS idx_books_community ON books(is_community_recommendation);
-    CREATE INDEX IF NOT EXISTS idx_history_user ON borrow_history(user_id);
-    CREATE INDEX IF NOT EXISTS idx_favorites_book ON favorites(book_id);
-    CREATE INDEX IF NOT EXISTS idx_reservations_book_status
-      ON reservations(book_id, status);
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'books_submitted_by_fkey'
+      ) THEN
+        ALTER TABLE books
+        ADD CONSTRAINT books_submitted_by_fkey
+        FOREIGN KEY (submitted_by)
+        REFERENCES users(id)
+        ON DELETE SET NULL;
+      END IF;
+    END $$;
   `);
 
-  // Seed books and demo account
+  // Seed books
+  const fs = await import("fs");
+  const path = await import("path");
+  const { fileURLToPath } = await import("url");
+
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+
   const seed = fs.readFileSync(
     path.join(__dirname, "seed.sql"),
     "utf8"
@@ -115,17 +167,12 @@ async function main() {
     "SELECT COUNT(*) AS count FROM books"
   );
 
-  const history = await client.query(
-    "SELECT COUNT(*) AS count FROM borrow_history"
+  const users = await client.query(
+    "SELECT COUNT(*) AS count FROM users"
   );
 
-  console.log(
-    `DATABASE READY - ${books.rows[0].count} BOOKS AVAILABLE`
-  );
-
-  console.log(
-    `BORROW HISTORY TABLE READY - ${history.rows[0].count} RECORDS`
-  );
+  console.log(`DATABASE READY - ${books.rows[0].count} BOOKS AVAILABLE`);
+  console.log(`USERS READY - ${users.rows[0].count}`);
 
   await client.end();
 }
