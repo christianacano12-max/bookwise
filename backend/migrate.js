@@ -1,9 +1,15 @@
+import fs from "fs";
+import path from "path";
 import pg from "pg";
 import dotenv from "dotenv";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const { Client } = pg;
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
@@ -12,43 +18,37 @@ const client = new Client({
     : false,
 });
 
-await client.connect();
+async function main() {
+  await client.connect();
 
-await client.query(`
-CREATE TABLE IF NOT EXISTS users (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+  const schema = fs.readFileSync(
+    path.join(__dirname, "schema.sql"),
+    "utf8"
+  );
 
-CREATE TABLE IF NOT EXISTS books (
-  id SERIAL PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  author VARCHAR(255) NOT NULL,
-  genre VARCHAR(100) NOT NULL,
-  description TEXT DEFAULT '',
-  published_year INT CHECK (published_year >= 0 AND published_year <= 3000),
-  rating NUMERIC(3,2) DEFAULT 0 CHECK (rating >= 0 AND rating <= 5),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+  const seed = fs.readFileSync(
+    path.join(__dirname, "seed.sql"),
+    "utf8"
+  );
 
-CREATE TABLE IF NOT EXISTS user_history (
-  id SERIAL PRIMARY KEY,
-  user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  book_id INT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-  action VARCHAR(30) NOT NULL DEFAULT 'view',
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+  await client.query(schema);
+  await client.query(seed);
 
-CREATE INDEX IF NOT EXISTS idx_books_title ON books(title);
-CREATE INDEX IF NOT EXISTS idx_books_genre ON books(genre);
-CREATE INDEX IF NOT EXISTS idx_history_user
-ON user_history(user_id, created_at DESC);
-`);
+  const result = await client.query(
+    "SELECT COUNT(*) AS count FROM books"
+  );
 
-console.log("DATABASE TABLES CREATED SUCCESSFULLY");
+  console.log(
+    `DATABASE READY - ${result.rows[0].count} BOOKS AVAILABLE`
+  );
 
-await client.end();
+  await client.end();
+}
+
+main().catch(async (error) => {
+  console.error("MIGRATION ERROR:", error);
+  try {
+    await client.end();
+  } catch {}
+  process.exit(1);
+});
