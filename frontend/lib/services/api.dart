@@ -57,14 +57,20 @@ class Api {
         throw ArgumentError('Unsupported HTTP method: $method');
     }
 
-    final data = response.body.isEmpty
-        ? <String, dynamic>{}
-        : jsonDecode(response.body);
+    final data =
+        response.body.isEmpty ? <String, dynamic>{} : jsonDecode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
         data is Map ? (data['message'] ?? 'Request failed') : 'Request failed',
       );
     }
     return data;
+  }
+
+  static Future<dynamic> returnBook(int bookId) async {
+    return await request(
+      'POST',
+      '/books/$bookId/return',
+    );
   }
 }

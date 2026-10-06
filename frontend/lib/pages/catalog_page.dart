@@ -61,9 +61,27 @@ class _CatalogPageState extends State<CatalogPage> {
 
   Future<void> _borrow(dynamic book) async {
     try {
-      final response = await Api.request('POST', '/books/${book['id']}/borrow');
+      final response = await Api.request(
+        'POST',
+        '/books/${book['id']}/borrow',
+      );
       if (mounted) {
         _message(response['message'] ?? 'Book borrowed successfully.');
+        await load();
+      }
+    } catch (error) {
+      if (mounted) _message(error);
+    }
+  }
+
+  Future<void> _return(dynamic book) async {
+    try {
+      final response = await Api.request(
+        'POST',
+        '/books/${book['id']}/return',
+      );
+      if (mounted) {
+        _message(response['message'] ?? 'Book returned successfully.');
         await load();
       }
     } catch (error) {
@@ -142,10 +160,18 @@ class _CatalogPageState extends State<CatalogPage> {
                       value: sort,
                       borderRadius: BorderRadius.circular(16),
                       items: const [
-                        DropdownMenuItem(value: 'title', child: Text('Title')),
                         DropdownMenuItem(
-                            value: 'rating', child: Text('Top rated')),
-                        DropdownMenuItem(value: 'year', child: Text('Newest')),
+                          value: 'title',
+                          child: Text('Title'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'rating',
+                          child: Text('Top rated'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'year',
+                          child: Text('Newest'),
+                        ),
                       ],
                       onChanged: (value) {
                         if (value == null) return;
@@ -171,31 +197,38 @@ class _CatalogPageState extends State<CatalogPage> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                            'Try another search or add the first book to the shelf.'),
+                          'Try another search or add the first book to the shelf.',
+                        ),
                       ],
                     ),
                   ),
                 ),
-              ...books.map((book) => _BookCard(
-                    book: book,
-                    onFavorite: () => _favorite(book),
-                    onBorrow: () => _borrow(book),
-                    onReserve: () => _reserve(book),
-                    onEdit: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BookFormPage(book: book),
-                      ),
-                    ).then((_) => load()),
-                    onDelete: () async {
-                      try {
-                        await Api.request('DELETE', '/books/${book['id']}');
-                        await load();
-                      } catch (error) {
-                        if (mounted) _message(error);
-                      }
-                    },
-                  )),
+              ...books.map(
+                (book) => _BookCard(
+                  book: book,
+                  onFavorite: () => _favorite(book),
+                  onBorrow: () => _borrow(book),
+                  onReturn: () => _return(book),
+                  onReserve: () => _reserve(book),
+                  onEdit: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BookFormPage(book: book),
+                    ),
+                  ).then((_) => load()),
+                  onDelete: () async {
+                    try {
+                      await Api.request(
+                        'DELETE',
+                        '/books/${book['id']}',
+                      );
+                      await load();
+                    } catch (error) {
+                      if (mounted) _message(error);
+                    }
+                  },
+                ),
+              ),
             ],
           ),
         ),
@@ -234,7 +267,11 @@ class _CatalogPageState extends State<CatalogPage> {
                 ],
               ),
             ),
-            Icon(Icons.explore_rounded, color: Color(0xFFFFD982), size: 58),
+            Icon(
+              Icons.explore_rounded,
+              color: Color(0xFFFFD982),
+              size: 58,
+            ),
           ],
         ),
       );
@@ -245,6 +282,7 @@ class _BookCard extends StatelessWidget {
     required this.book,
     required this.onFavorite,
     required this.onBorrow,
+    required this.onReturn,
     required this.onReserve,
     required this.onEdit,
     required this.onDelete,
@@ -253,6 +291,7 @@ class _BookCard extends StatelessWidget {
   final dynamic book;
   final VoidCallback onFavorite;
   final VoidCallback onBorrow;
+  final VoidCallback onReturn;
   final VoidCallback onReserve;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -261,6 +300,7 @@ class _BookCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final copies = book['available_copies'] ?? book['copies'] ?? 0;
     final available = copies is num && copies > 0;
+    final isBorrowed = book['is_borrowed'] == true;
 
     return Card(
       child: Padding(
@@ -294,24 +334,32 @@ class _BookCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text('${book['author'] ?? 'Unknown author'}'),
+                      Text(
+                        '${book['author'] ?? 'Unknown author'}',
+                      ),
                       const SizedBox(height: 7),
                       Wrap(
                         spacing: 6,
                         runSpacing: 4,
                         children: [
                           Chip(
-                            label: Text('${book['genre'] ?? 'Uncategorised'}'),
+                            label: Text(
+                              '${book['genre'] ?? 'Uncategorised'}',
+                            ),
                             visualDensity: VisualDensity.compact,
                           ),
                           Text(
-                            available
-                                ? '$copies available'
-                                : 'Currently borrowed',
+                            isBorrowed
+                                ? 'You borrowed this'
+                                : (available
+                                    ? '$copies available'
+                                    : 'Currently unavailable'),
                             style: TextStyle(
-                              color: available
-                                  ? const Color(0xFF47754E)
-                                  : Theme.of(context).colorScheme.error,
+                              color: isBorrowed
+                                  ? const Color(0xFF8B641E)
+                                  : (available
+                                      ? const Color(0xFF47754E)
+                                      : Theme.of(context).colorScheme.error),
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
                             ),
@@ -343,9 +391,17 @@ class _BookCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 TextButton.icon(
-                  onPressed: available ? onBorrow : onReserve,
-                  icon: Icon(available ? Icons.bookmark_add : Icons.schedule),
-                  label: Text(available ? 'Borrow' : 'Reserve'),
+                  onPressed: isBorrowed
+                      ? onReturn
+                      : (available ? onBorrow : onReserve),
+                  icon: Icon(
+                    isBorrowed
+                        ? Icons.assignment_return
+                        : (available ? Icons.bookmark_add : Icons.schedule),
+                  ),
+                  label: Text(
+                    isBorrowed ? 'Return' : (available ? 'Borrow' : 'Reserve'),
+                  ),
                 ),
                 PopupMenuButton<String>(
                   tooltip: 'More actions',
@@ -354,8 +410,14 @@ class _BookCard extends StatelessWidget {
                     if (value == 'delete') onDelete();
                   },
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'edit', child: Text('Edit book')),
-                    PopupMenuItem(value: 'delete', child: Text('Delete book')),
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Text('Edit book'),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text('Delete book'),
+                    ),
                   ],
                 ),
               ],
