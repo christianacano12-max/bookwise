@@ -4,7 +4,13 @@ import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
 import { query } from './db.js';
 import { auth, signToken } from './auth.js';
-import { ReservationQueue, HistoryStack, BookBST, mergeSort, genreFrequency } from './dsa.js';
+import {
+  ReservationQueue,
+  HistoryStack,
+  BookBST,
+  mergeSort,
+  genreFrequency
+} from './dsa.js';
 
 dotenv.config();
 
@@ -116,6 +122,7 @@ app.post('/api/auth/signup', async (req, res) => {
     });
   } catch (e) {
     console.error('SIGNUP ERROR:', e);
+
     return res.status(500).json({
       message: 'Unable to create account.'
     });
@@ -133,7 +140,10 @@ app.post('/api/auth/login', async (req, res) => {
 
     if (
       !r.rowCount ||
-      !(await bcrypt.compare(password || '', r.rows[0].password_hash))
+      !(await bcrypt.compare(
+        password || '',
+        r.rows[0].password_hash
+      ))
     ) {
       return res.status(401).json({
         message: 'Incorrect email or password.'
@@ -193,7 +203,7 @@ app.get('/api/books', auth, async (req, res) => {
 
     const bst = new BookBST();
 
-    r.rows.forEach(b => bst.insert(b));
+    r.rows.forEach(book => bst.insert(book));
 
     let books = q
       ? [
@@ -206,9 +216,9 @@ app.get('/api/books', auth, async (req, res) => {
                     .toLowerCase()
                     .includes(q.toLowerCase())
                 )
-              ),
+              )
             ].map(book => [book.id, book])
-          ).values(),
+          ).values()
         ]
       : r.rows;
 
@@ -234,7 +244,7 @@ app.get('/api/books', auth, async (req, res) => {
       books,
       algorithm: q
         ? 'BST title-prefix search + author/genre filtering'
-        : 'Merge Sort / database retrieval',
+        : 'Merge Sort / database retrieval'
     });
   } catch (e) {
     res.status(500).json({
@@ -576,8 +586,7 @@ app.post('/api/books/:id/return', auth, async (req, res) => {
       await client.query('ROLLBACK');
 
       return res.status(400).json({
-        message:
-          'You do not currently have this book borrowed.'
+        message: 'You do not currently have this book borrowed.'
       });
     }
 

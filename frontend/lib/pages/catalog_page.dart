@@ -349,11 +349,13 @@ class _BookCard extends StatelessWidget {
                             visualDensity: VisualDensity.compact,
                           ),
                           Text(
-                            isBorrowed
-                                ? 'You borrowed this'
-                                : (available
-                                    ? '$copies available'
-                                    : 'Currently unavailable'),
+                            isBorrowed && available
+                                ? '$copies available • You borrowed this'
+                                : (isBorrowed
+                                    ? 'You borrowed this'
+                                    : (available
+                                        ? '$copies available'
+                                        : 'Currently unavailable')),
                             style: TextStyle(
                               color: isBorrowed
                                   ? const Color(0xFF8B641E)
@@ -391,17 +393,14 @@ class _BookCard extends StatelessWidget {
                 ),
                 const Spacer(),
                 TextButton.icon(
-                  onPressed: isBorrowed
-                      ? onReturn
-                      : (available ? onBorrow : onReserve),
-                  icon: Icon(
-                    isBorrowed
-                        ? Icons.assignment_return
-                        : (available ? Icons.bookmark_add : Icons.schedule),
-                  ),
-                  label: Text(
-                    isBorrowed ? 'Return' : (available ? 'Borrow' : 'Reserve'),
-                  ),
+                  onPressed: available ? onBorrow : null,
+                  icon: const Icon(Icons.bookmark_add),
+                  label: const Text('Borrow'),
+                ),
+                TextButton.icon(
+                  onPressed: isBorrowed ? onReturn : null,
+                  icon: const Icon(Icons.assignment_return),
+                  label: const Text('Return'),
                 ),
                 PopupMenuButton<String>(
                   tooltip: 'More actions',
